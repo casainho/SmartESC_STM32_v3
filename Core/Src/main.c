@@ -126,7 +126,6 @@ int8_t i8_reverse_flag = 1; //for temporaribly reverse direction
 
 uint8_t ui8_adc_offset_done_flag = 0;
 uint8_t ui8_print_flag = 0;
-uint8_t ui8_UART_flag = 0;
 uint8_t ui8_Push_Assist_flag = 0;
 uint8_t ui8_UART_TxCplt_flag = 1;
 uint8_t ui8_PAS_flag = 0;
@@ -464,6 +463,8 @@ int main(void) {
 
    	EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
 
+               autodetect();
+ 
    	// set motor specific angle to value from emulated EEPROM only if valid
    	if(MP.spec_angle!=0xFFFF) {
    		q31_rotorposition_motor_specific = MP.spec_angle<<16;
@@ -564,15 +565,10 @@ int main(void) {
 			PI_flag = 0;
 		}
 		//display message processing
-		if (ui8_UART_flag) {
-
 #if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS || DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
-			process_ant_page(&MS, &MP);
+		process_ant_page(&MS, &MP);
 
 #endif
-
-			ui8_UART_flag = 0;
-		}
 
 #if 0 //(DISPLAY_TYPE == DISPLAY_TYPE_DEBUG) // && defined(FAST_LOOP_LOG))
 		if(ui8_UART_TxCplt_flag){
@@ -1440,11 +1436,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		} // end case
 
 	} //end if
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
-	ui8_UART_flag = 1;
-
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {
