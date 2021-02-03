@@ -462,8 +462,6 @@ int main(void) {
    	ui8_adc_offset_done_flag=1;
 
    	EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
-
-               autodetect();
  
    	// set motor specific angle to value from emulated EEPROM only if valid
    	if(MP.spec_angle!=0xFFFF) {
@@ -472,12 +470,6 @@ int main(void) {
    	}else{
                 autodetect();
         }
-
-	// set motor specific angle to value from emulated EEPROM only if valid
-	if (MP.spec_angle != 0xFFFF) {
-		q31_rotorposition_motor_specific = MP.spec_angle << 16;
-		EE_ReadVariable(EEPROM_POS_HALL_ORDER, &i16_hall_order);
-	}
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
 	printf_("Lishui FOC v0.9 \n ");
@@ -1440,6 +1432,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {
 	ui8_UART_TxCplt_flag = 1;
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
+        ebics_reset();
 }
 
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
