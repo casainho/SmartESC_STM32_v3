@@ -50,11 +50,13 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta);
 
 
-static const q31_t hfi_sin_table[16] = {} ; //TODO: fill with sin(2*PI/16 *i) * 2^16
-static const q31_t hfi_cos_table[16] = {} ; //TODO: fill with cos(2*PI/16 *i) * 2^16
+static const q31_t hfi_sin_table[16] = {0,25079,46340,60547,65536,60547,46340,25079
+                                        0,-25079-46340,-60547,-65536,-60547,-46340,-25079 } ; //sin(2*PI/16 *i) * 2^16
+static const q31_t hfi_cos_table[16] = {65536,60547,46340,25079,0,-25079,-46340,-60547,-65536,
+                                        -60547,-46340,-25079,0,25079,46340,60547}; //cos(2*PI/16 *i) * 2^16
 
 int16_t low_pass(int16_t v){
-   //TODO: some kind of low pass filter with strong attenuation @1000hz and zero delay @max electrical hz
+   //TODO: some kind of low pass filter with strong attenuation @1000hz and zero delay @max electrical 40hz
 }
 
 q31_t q31_low_pass(q31_t v){
