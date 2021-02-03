@@ -10,6 +10,9 @@
 #include "stm32f1xx_hal.h"
 #include <arm_math.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
+#define HFI_VOLTAGE 200
 
 //q31_t	T_halfsample = 0.00003125;
 //q31_t	counterfrequency = 64000000;
@@ -46,6 +49,25 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 		int16_t int16_i_q_target, MotorState_t *MS_FOC);
 void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta);
 
+
+static const q31_t hfi_sin_table[16] = {} ; //TODO: fill with sin(2*PI/16 *i) * 2^16
+static const q31_t hfi_cos_table[16] = {} ; //TODO: fill with cos(2*PI/16 *i) * 2^16
+
+int16_t low_pass(int16_t v){
+   //TODO: some kind of low pass filter with strong attenuation @1000hz and zero delay @max electrical hz
+}
+
+q31_t q31_low_pass(q31_t v){
+    //TODO: this low pass should roll off very fast. 
+}
+
+q31_t q31_atan2(q31_t y, q31_t x){
+    //TODO: magic fast integer atan2 function
+}  
+
+static bool hfi_on=true;
+
+
 void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 		int16_t int16_i_q_target, MotorState_t *MS_FOC) {
 	HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
@@ -57,6 +79,10 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 	q31_t q31_i_q = 0;
 
 	q31_t sinevalue = 0, cosinevalue = 0;
+
+
+        int16_t int16_i_as_lp = low_pass(int16_i_as);
+        int16_t int16_i_bs_lp = low_pass(int16_i_bs);
 
 	// temp5=(q31_t)int16_i_as;
 	// temp6=(q31_t)int16_i_bs;
@@ -93,6 +119,26 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 	//inverse Park transformation
 	arm_inv_park_q31(MS_FOC->u_d, MS_FOC->u_q, &q31_u_alpha, &q31_u_beta,
 			-sinevalue, cosinevalue);
+
+
+        if(hfi_on){
+             static int hfi_index=0;
+
+             //Heterodyne the current with injection signal to frequency shift by injection frequency
+             q31_t heteroA = (int16_i_as * hfi_sin_table[hfi_index]);
+             q31_t heteroB = (int16_i_bs * hfi_sin_table[hfi_index]);
+
+             q31_t loA = q31_low_pass(heteroA);
+             q31_t loB = q31_low_pass(heteroB);
+
+             q31_t rotor_angle = q31_atan2(loA,loB); //That's it
+
+             //Generate the injection
+             q31_u_alpha += (hfi_sin_table[hfi_index] * HFI_VOLTAGE) >> 16;
+             q31_u_beta += (hfi_cos_table[hfi_index++] * HFI_VOLTAGE) >> 16;
+             if(hfi_index==16)
+                hfi_index=0;
+        }        
 
 #ifdef FAST_LOOP_LOG
 	temp1=int16_i_as;
