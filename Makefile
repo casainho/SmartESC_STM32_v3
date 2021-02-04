@@ -38,6 +38,7 @@ BUILD_DIR = build
 C_SOURCES =  \
 Core/Src/main.c \
 Core/Src/FOC.c \
+Core/Src/math.c \
 Core/Src/eeprom.c \
 Core/Src/display_ebics.c \
 Core/Src/stm32f1xx_it.c \
