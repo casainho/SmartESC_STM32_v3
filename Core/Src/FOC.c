@@ -57,12 +57,39 @@ static const q31_t hfi_sin_table[16] = {0,25079,46340,60547,65536,60547,46340,25
 static const q31_t hfi_cos_table[16] = {65536,60547,46340,25079,0,-25079,-46340,-60547,-65536,
                                         -60547,-46340,-25079,0,25079,46340,60547}; //cos(2*PI/16 *i) * 2^16
 
-int16_t low_pass(int16_t v){
-   //TODO: some kind of low pass filter with strong attenuation @1000hz and zero delay @max electrical 40hz
+#define FIR_LENGTH 81
+
+//This table is a low-pass filter fP=160Hz, fT=200Hz, -50dB attenuation @1kHz, 31-bit fractional
+static const q31_t fir_table[FIR_LENGTH] = {4412953, 6411649, 8470397, 10853740, 13555219, 16579373, 19915872, 23547068, 27449484, 31584030, 35915723, 40393140, 44962124, 49565291, 54139418, 58624012, 62951172, 67058079, 70878157, 74356661, 77435724, 80065227, 82205974, 83818055, 84879972, 85367777, 85273989, 84592408, 83336980, 81517814, 79160319, 76297007, 72963728, 69206242, 65074903, 60625312, 55913963, 51004410, 45957280, 40832727, 35695833, 30603715, 25616153, 20786406, 16166954, 11799388, 7724594, 3977987, 585219, -2431927, -5062466, -7296440, -9138605, -10593725, -11674555, -12398488, -12790743, -12878596, -12690645, -12264140, -11632141, -10830757, -9897301, -8869861, -7781736, -6662418, -5544625, -4454062, -3416693, -2447235, -1561911, -773788, -93259, 476836, 938251, 1289151, 1534340, 1679182, 1736259, 1714482, 1623484};
+
+static inline uint64_t umull(uint32_t op1, uint32_t op2) {
+    uint64_t result;
+    asm volatile(
+        "umull %Q[dwresult], %R[dwresult], %[operand_1], %[operand_2]"
+        :[dwresult] "=r" (result)
+        :[operand_1] "r" (op1), [operand_2] "r" (op2)
+    );
+    return result;
 }
 
-q31_t q31_low_pass(q31_t v){
-    //TODO: this low pass should roll off very fast. 
+typedef struct {
+     q31_t taps[FIR_LENGTH];
+     int head;
+} filter_state_t;
+
+//TODO: has to be a way to optimize this
+q31_t q31_low_pass(q31_t v, filter_state_t *filter){
+     q31_t ret=0;
+     filter->taps[filter->head] = v;
+     for(int i=0; i < FIR_LENGTH; i++){
+         ret +=  umull(filter->taps[(filter->head + i) % FIR_LENGTH], fir_table[i]) >> 31;
+     }
+
+     filter->head++;
+     if(filter->head==FIR_LENGTH)
+        filter->head=0;
+
+     return ret;
 }
 
 static bool hfi_on=true;
@@ -80,16 +107,19 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 
 	q31_t sinevalue = 0, cosinevalue = 0;
 
-
-        int16_t int16_i_as_lp = low_pass(int16_i_as);
-        int16_t int16_i_bs_lp = low_pass(int16_i_bs);
-
+    
+        static filter_state_t fundamental_alpha, fundamental_beta, heterodyne_alpha, heterodyne_beta;
 	// temp5=(q31_t)int16_i_as;
 	// temp6=(q31_t)int16_i_bs;
 
 	// Clark transformation
 	arm_clarke_q31((q31_t) int16_i_as, (q31_t) int16_i_bs, &q31_i_alpha,
 			&q31_i_beta);
+
+        if(hfi_on){
+                q31_i_alpha = q31_low_pass(q31_i_alpha, &fundamental_alpha);
+                q31_i_beta = q31_low_pass(q31_i_beta, &fundamental_beta);
+        }
 
 	arm_sin_cos_q31(q31_teta, &sinevalue, &cosinevalue);
 
@@ -125,11 +155,11 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
              static int hfi_index=0;
 
              //Heterodyne the current with injection signal to frequency shift by injection frequency
-             q31_t heteroA = (int16_i_as * hfi_sin_table[hfi_index]);
-             q31_t heteroB = (int16_i_bs * hfi_sin_table[hfi_index]);
+             q31_t heteroA = (q31_i_alpha * hfi_sin_table[hfi_index]);
+             q31_t heteroB = (q31_i_beta * hfi_sin_table[hfi_index]);
 
-             q31_t loA = q31_low_pass(heteroA);
-             q31_t loB = q31_low_pass(heteroB);
+             q31_t loA = q31_low_pass(heteroA, &heterodyne_alpha);
+             q31_t loB = q31_low_pass(heteroB, &heterodyne_beta);
 
              q31_t rotor_angle = atan2_LUT(loA,loB); //That's it
 
