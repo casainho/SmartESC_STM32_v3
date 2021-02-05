@@ -15,6 +15,7 @@
 #define HFI_VOLTAGE 200
 
 q31_t atan2_LUT(q31_t e_alpha, q31_t e_beta);
+extern DMA_HandleTypeDef hdma_m2m;
 
 //q31_t	T_halfsample = 0.00003125;
 //q31_t	counterfrequency = 64000000;
@@ -57,39 +58,91 @@ static const q31_t hfi_sin_table[16] = {0,25079,46340,60547,65536,60547,46340,25
 static const q31_t hfi_cos_table[16] = {65536,60547,46340,25079,0,-25079,-46340,-60547,-65536,
                                         -60547,-46340,-25079,0,25079,46340,60547}; //cos(2*PI/16 *i) * 2^16
 
-#define FIR_LENGTH 81
+#define FIR_LENGTH 64
 
-//This table is a low-pass filter fP=160Hz, fT=200Hz, -50dB attenuation @1kHz, 31-bit fractional
-static const q31_t fir_table[FIR_LENGTH] = {4412953, 6411649, 8470397, 10853740, 13555219, 16579373, 19915872, 23547068, 27449484, 31584030, 35915723, 40393140, 44962124, 49565291, 54139418, 58624012, 62951172, 67058079, 70878157, 74356661, 77435724, 80065227, 82205974, 83818055, 84879972, 85367777, 85273989, 84592408, 83336980, 81517814, 79160319, 76297007, 72963728, 69206242, 65074903, 60625312, 55913963, 51004410, 45957280, 40832727, 35695833, 30603715, 25616153, 20786406, 16166954, 11799388, 7724594, 3977987, 585219, -2431927, -5062466, -7296440, -9138605, -10593725, -11674555, -12398488, -12790743, -12878596, -12690645, -12264140, -11632141, -10830757, -9897301, -8869861, -7781736, -6662418, -5544625, -4454062, -3416693, -2447235, -1561911, -773788, -93259, 476836, 938251, 1289151, 1534340, 1679182, 1736259, 1714482, 1623484};
-
-static inline uint64_t umull(uint32_t op1, uint32_t op2) {
-    uint64_t result;
-    asm volatile(
-        "umull %Q[dwresult], %R[dwresult], %[operand_1], %[operand_2]"
-        :[dwresult] "=r" (result)
-        :[operand_1] "r" (op1), [operand_2] "r" (op2)
-    );
-    return result;
-}
 
 typedef struct {
-     q31_t taps[FIR_LENGTH];
-     int head;
+     int16_t taps[FIR_LENGTH];
 } filter_state_t;
+
+static void queue_dma(uint16_t *dst, uint16_t *src, uint16_t count){
+        //TODO: only start DMA if not in progress, and implement DMA IRQ
+        HAL_DMA_Start_IT(&hdma_m2m, src, dst, count);
+}
 
 //TODO: has to be a way to optimize this
 q31_t q31_low_pass(q31_t v, filter_state_t *filter){
-     q31_t ret=0;
-     filter->taps[filter->head] = v;
-     for(int i=0; i < FIR_LENGTH; i++){
-         ret +=  umull(filter->taps[(filter->head + i) % FIR_LENGTH], fir_table[i]) >> 31;
-     }
+        q31_t ret=0;
+        filter->taps[0] = v;
 
-     filter->head++;
-     if(filter->head==FIR_LENGTH)
-        filter->head=0;
+        ret += (filter->taps[0] * 462) >> 16;
+        ret += (filter->taps[1] * 438) >> 16;
+        ret += (filter->taps[2] * 518) >> 16;
+        ret += (filter->taps[3] * 623) >> 16;
+        ret += (filter->taps[4] * 741) >> 16;
+        ret += (filter->taps[5] * 871) >> 16;
+        ret += (filter->taps[6] * 1011) >> 16;
+        ret += (filter->taps[7] * 1157) >> 16;
+        ret += (filter->taps[8] * 1309) >> 16;
+        ret += (filter->taps[9] * 1464) >> 16;
+        ret += (filter->taps[10] * 1619) >> 16;
+        ret += (filter->taps[11] * 1773) >> 16;
+        ret += (filter->taps[12] * 1922) >> 16;
+        ret += (filter->taps[13] * 2064) >> 16;
+        ret += (filter->taps[14] * 2196) >> 16;
+        ret += (filter->taps[15] * 2316) >> 16;
+        ret += (filter->taps[16] * 2422) >> 16;
+        ret += (filter->taps[17] * 2512) >> 16;
+        ret += (filter->taps[18] * 2585) >> 16;
+        ret += (filter->taps[19] * 2638) >> 16;
+        ret += (filter->taps[20] * 2671) >> 16;
+        ret += (filter->taps[21] * 2685) >> 16;
+        ret += (filter->taps[22] * 2676) >> 16;
+        ret += (filter->taps[23] * 2648) >> 16;
+        ret += (filter->taps[24] * 2599) >> 16;
+        ret += (filter->taps[25] * 2531) >> 16;
+        ret += (filter->taps[26] * 2444) >> 16;
+        ret += (filter->taps[27] * 2342) >> 16;
+        ret += (filter->taps[28] * 2223) >> 16;
+        ret += (filter->taps[29] * 2092) >> 16;
+        ret += (filter->taps[30] * 1950) >> 16;
+        ret += (filter->taps[31] * 1799) >> 16;
+        ret += (filter->taps[32] * 1641) >> 16;
+        ret += (filter->taps[33] * 1479) >> 16;
+        ret += (filter->taps[34] * 1315) >> 16;
+        ret += (filter->taps[35] * 1152) >> 16;
+        ret += (filter->taps[36] * 990) >> 16;
+        ret += (filter->taps[37] * 834) >> 16;
+        ret += (filter->taps[38] * 683) >> 16;
+        ret += (filter->taps[39] * 540) >> 16;
+        ret += (filter->taps[40] * 406) >> 16;
+        ret += (filter->taps[41] * 282) >> 16;
+        ret += (filter->taps[42] * 170) >> 16;
+        ret += (filter->taps[43] * 70) >> 16;
+        ret += (filter->taps[44] * -18) >> 16;
+        ret += (filter->taps[45] * -93) >> 16;
+        ret += (filter->taps[46] * -156) >> 16;
+        ret += (filter->taps[47] * -207) >> 16;
+        ret += (filter->taps[48] * -247) >> 16;
+        ret += (filter->taps[49] * -275) >> 16;
+        ret += (filter->taps[50] * -293) >> 16;
+        ret += (filter->taps[51] * -300) >> 16;
+        ret += (filter->taps[52] * -301) >> 16;
+        ret += (filter->taps[53] * -292) >> 16;
+        ret += (filter->taps[54] * -278) >> 16;
+        ret += (filter->taps[55] * -257) >> 16;
+        ret += (filter->taps[56] * -233) >> 16;
+        ret += (filter->taps[57] * -206) >> 16;
+        ret += (filter->taps[58] * -176) >> 16;
+        ret += (filter->taps[59] * -145) >> 16;
+        ret += (filter->taps[60] * -115) >> 16;
+        ret += (filter->taps[61] * -85) >> 16;
+        ret += (filter->taps[62] * -56) >> 16;
+        ret += (filter->taps[63] * -30) >> 16;
 
-     return ret;
+        queue_dma(filter->taps + 1, filter->taps, 63);
+
+        return ret;
 }
 
 static bool hfi_on=true;
