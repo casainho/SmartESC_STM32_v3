@@ -479,8 +479,11 @@ int main(void) {
 #endif
 
 	HAL_Delay(5);
+#ifdef PWM_ALWAYS_ON
+        SET_BIT(TIM1->BDTR, TIM_BDTR_MOE); //enable PWM if power is wanted
+#else
 	CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM
-
+#endif
 	get_standstill_position();
 
 	/* USER CODE END 2 */
@@ -538,7 +541,9 @@ int main(void) {
 		} else {
 #ifdef KILL_ON_ZERO
                   if(uint16_mapped_throttle==0&&READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
+#ifndef PWM_ALWAYS_ON
 			  CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
+#endif
 			  get_standstill_position();
                           printf_("shutdown %d\n", q31_rotorposition_absolute);
                   }
@@ -555,8 +560,9 @@ int main(void) {
 			if ((uint16_full_rotation_counter > 7999
 					|| uint16_half_rotation_counter > 7999)
 					&& READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
+#ifndef PWM_ALWAYS_ON
 				CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
-
+#endif
 				get_standstill_position();
 				printf_("shutdown %d\n", q31_rotorposition_absolute);
 			}

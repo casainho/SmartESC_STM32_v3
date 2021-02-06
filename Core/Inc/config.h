@@ -51,4 +51,6 @@
 
 #define REGEN_CURRENT_MAX 10000
 
+#define PWM_ALWAYS_ON 1
+
 #endif /* CONFIG_H_ */

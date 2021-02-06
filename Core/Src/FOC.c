@@ -200,7 +200,10 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 	if (!MS_FOC->hall_angle_detect_flag) {
    	        MS_FOC->u_q=0;
 	        MS_FOC->u_d=300;
-	}
+	}else{
+   	        MS_FOC->u_q=0;  //TODO: for now make no voltage
+	        MS_FOC->u_d=0;
+        }
 
 	//inverse Park transformation
 	arm_inv_park_q31(MS_FOC->u_d, MS_FOC->u_q, &q31_u_alpha, &q31_u_beta,
@@ -220,10 +223,12 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
              q31_t rotor_angle = atan2_LUT(loA,loB); //That's it
 
              //Generate the injection
+#if 0
              q31_u_alpha += (hfi_sin_table[hfi_index] * HFI_VOLTAGE) >> 16;
              q31_u_beta += (hfi_cos_table[hfi_index++] * HFI_VOLTAGE) >> 16;
              if(hfi_index==16)
                 hfi_index=0;
+#endif
         }        
 
 #ifdef FAST_LOOP_LOG
