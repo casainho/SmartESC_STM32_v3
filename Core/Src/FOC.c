@@ -59,90 +59,93 @@ static const q31_t hfi_cos_table[16] = {65536,60547,46340,25079,0,-25079,-46340,
                                         -60547,-46340,-25079,0,25079,46340,60547}; //cos(2*PI/16 *i) * 2^16
 
 #define FIR_LENGTH 64
-
+#define FIR_REVERSED 0
 
 typedef struct {
      int16_t taps[FIR_LENGTH];
 } filter_state_t;
 
 static void queue_dma(uint16_t *dst, uint16_t *src, uint16_t count){
-        //TODO: only start DMA if not in progress, and implement DMA IRQ
-        HAL_DMA_Start_IT(&hdma_m2m, src, dst, count);
+        //TODO: make sure DMA is not busy
+        HAL_DMA_Start(&hdma_m2m, src, dst, count);
 }
 
 //TODO: has to be a way to optimize this
 q31_t q31_low_pass(q31_t v, filter_state_t *filter){
         q31_t ret=0;
-        filter->taps[0] = v;
+        filter->taps[FIR_REVERSED?0:63] = v;
 
-        ret += (filter->taps[0] * 462) >> 16;
-        ret += (filter->taps[1] * 438) >> 16;
-        ret += (filter->taps[2] * 518) >> 16;
-        ret += (filter->taps[3] * 623) >> 16;
-        ret += (filter->taps[4] * 741) >> 16;
-        ret += (filter->taps[5] * 871) >> 16;
-        ret += (filter->taps[6] * 1011) >> 16;
-        ret += (filter->taps[7] * 1157) >> 16;
-        ret += (filter->taps[8] * 1309) >> 16;
-        ret += (filter->taps[9] * 1464) >> 16;
-        ret += (filter->taps[10] * 1619) >> 16;
-        ret += (filter->taps[11] * 1773) >> 16;
-        ret += (filter->taps[12] * 1922) >> 16;
-        ret += (filter->taps[13] * 2064) >> 16;
-        ret += (filter->taps[14] * 2196) >> 16;
-        ret += (filter->taps[15] * 2316) >> 16;
-        ret += (filter->taps[16] * 2422) >> 16;
-        ret += (filter->taps[17] * 2512) >> 16;
-        ret += (filter->taps[18] * 2585) >> 16;
-        ret += (filter->taps[19] * 2638) >> 16;
-        ret += (filter->taps[20] * 2671) >> 16;
-        ret += (filter->taps[21] * 2685) >> 16;
-        ret += (filter->taps[22] * 2676) >> 16;
-        ret += (filter->taps[23] * 2648) >> 16;
-        ret += (filter->taps[24] * 2599) >> 16;
-        ret += (filter->taps[25] * 2531) >> 16;
-        ret += (filter->taps[26] * 2444) >> 16;
-        ret += (filter->taps[27] * 2342) >> 16;
-        ret += (filter->taps[28] * 2223) >> 16;
-        ret += (filter->taps[29] * 2092) >> 16;
-        ret += (filter->taps[30] * 1950) >> 16;
-        ret += (filter->taps[31] * 1799) >> 16;
-        ret += (filter->taps[32] * 1641) >> 16;
-        ret += (filter->taps[33] * 1479) >> 16;
-        ret += (filter->taps[34] * 1315) >> 16;
-        ret += (filter->taps[35] * 1152) >> 16;
-        ret += (filter->taps[36] * 990) >> 16;
-        ret += (filter->taps[37] * 834) >> 16;
-        ret += (filter->taps[38] * 683) >> 16;
-        ret += (filter->taps[39] * 540) >> 16;
-        ret += (filter->taps[40] * 406) >> 16;
-        ret += (filter->taps[41] * 282) >> 16;
-        ret += (filter->taps[42] * 170) >> 16;
-        ret += (filter->taps[43] * 70) >> 16;
-        ret += (filter->taps[44] * -18) >> 16;
-        ret += (filter->taps[45] * -93) >> 16;
-        ret += (filter->taps[46] * -156) >> 16;
-        ret += (filter->taps[47] * -207) >> 16;
-        ret += (filter->taps[48] * -247) >> 16;
-        ret += (filter->taps[49] * -275) >> 16;
-        ret += (filter->taps[50] * -293) >> 16;
-        ret += (filter->taps[51] * -300) >> 16;
-        ret += (filter->taps[52] * -301) >> 16;
-        ret += (filter->taps[53] * -292) >> 16;
-        ret += (filter->taps[54] * -278) >> 16;
-        ret += (filter->taps[55] * -257) >> 16;
-        ret += (filter->taps[56] * -233) >> 16;
-        ret += (filter->taps[57] * -206) >> 16;
-        ret += (filter->taps[58] * -176) >> 16;
-        ret += (filter->taps[59] * -145) >> 16;
-        ret += (filter->taps[60] * -115) >> 16;
-        ret += (filter->taps[61] * -85) >> 16;
-        ret += (filter->taps[62] * -56) >> 16;
-        ret += (filter->taps[63] * -30) >> 16;
+        ret += (filter->taps[0] * 462) >> 8;
+        ret += (filter->taps[1] * 438) >> 8;
+        ret += (filter->taps[2] * 518) >> 8;
+        ret += (filter->taps[3] * 623) >> 8;
+        ret += (filter->taps[4] * 741) >> 8;
+        ret += (filter->taps[5] * 871) >> 8;
+        ret += (filter->taps[6] * 1011) >> 8;
+        ret += (filter->taps[7] * 1157) >> 8;
+        ret += (filter->taps[8] * 1309) >> 8;
+        ret += (filter->taps[9] * 1464) >> 8;
+        ret += (filter->taps[10] * 1619) >> 8;
+        ret += (filter->taps[11] * 1773) >> 8;
+        ret += (filter->taps[12] * 1922) >> 8;
+        ret += (filter->taps[13] * 2064) >> 8;
+        ret += (filter->taps[14] * 2196) >> 8;
+        ret += (filter->taps[15] * 2316) >> 8;
+        ret += (filter->taps[16] * 2422) >> 8;
+        ret += (filter->taps[17] * 2512) >> 8;
+        ret += (filter->taps[18] * 2585) >> 8;
+        ret += (filter->taps[19] * 2638) >> 8;
+        ret += (filter->taps[20] * 2671) >> 8;
+        ret += (filter->taps[21] * 2685) >> 8;
+        ret += (filter->taps[22] * 2676) >> 8;
+        ret += (filter->taps[23] * 2648) >> 8;
+        ret += (filter->taps[24] * 2599) >> 8;
+        ret += (filter->taps[25] * 2531) >> 8;
+        ret += (filter->taps[26] * 2444) >> 8;
+        ret += (filter->taps[27] * 2342) >> 8;
+        ret += (filter->taps[28] * 2223) >> 8;
+        ret += (filter->taps[29] * 2092) >> 8;
+        ret += (filter->taps[30] * 1950) >> 8;
+        ret += (filter->taps[31] * 1799) >> 8;
+        ret += (filter->taps[32] * 1641) >> 8;
+        ret += (filter->taps[33] * 1479) >> 8;
+        ret += (filter->taps[34] * 1315) >> 8;
+        ret += (filter->taps[35] * 1152) >> 8;
+        ret += (filter->taps[36] * 990) >> 8;
+        ret += (filter->taps[37] * 834) >> 8;
+        ret += (filter->taps[38] * 683) >> 8;
+        ret += (filter->taps[39] * 540) >> 8;
+        ret += (filter->taps[40] * 406) >> 8;
+        ret += (filter->taps[41] * 282) >> 8;
+        ret += (filter->taps[42] * 170) >> 8;
+        ret += (filter->taps[43] * 70) >> 8;
+        ret += (filter->taps[44] * -18) >> 8;
+        ret += (filter->taps[45] * -93) >> 8;
+        ret += (filter->taps[46] * -156) >> 8;
+        ret += (filter->taps[47] * -207) >> 8;
+        ret += (filter->taps[48] * -247) >> 8;
+        ret += (filter->taps[49] * -275) >> 8;
+        ret += (filter->taps[50] * -293) >> 8;
+        ret += (filter->taps[51] * -300) >> 8;
+        ret += (filter->taps[52] * -301) >> 8;
+        ret += (filter->taps[53] * -292) >> 8;
+        ret += (filter->taps[54] * -278) >> 8;
+        ret += (filter->taps[55] * -257) >> 8;
+        ret += (filter->taps[56] * -233) >> 8;
+        ret += (filter->taps[57] * -206) >> 8;
+        ret += (filter->taps[58] * -176) >> 8;
+        ret += (filter->taps[59] * -145) >> 8;
+        ret += (filter->taps[60] * -115) >> 8;
+        ret += (filter->taps[61] * -85) >> 8;
+        ret += (filter->taps[62] * -56) >> 8;
+        ret += (filter->taps[63] * -30) >> 8;
 
-        queue_dma(filter->taps + 1, filter->taps, 63);
+        if(FIR_REVERSED)
+                queue_dma(filter->taps, filter->taps+1, 63);
+        else
+                queue_dma(filter->taps + 1, filter->taps, 63);
 
-        return ret;
+        return ret >> 8;
 }
 
 static bool hfi_on=true;
