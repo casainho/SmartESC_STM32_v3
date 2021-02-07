@@ -1050,9 +1050,10 @@ static void MX_DMA_Init(void) {
 	HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 2, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 	/* DMA1_Channel5_IRQn interrupt configuration */
+#if 0
 	HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 2, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
-
+#endif
 
         hdma_m2m.Instance = DMA1_Channel6;
         hdma_m2m.Init.Direction = DMA_MEMORY_TO_MEMORY;

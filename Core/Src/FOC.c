@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define HFI_VOLTAGE 200
+#define HFI_VOLTAGE 100
 
 q31_t atan2_LUT(q31_t e_alpha, q31_t e_beta);
 extern DMA_HandleTypeDef hdma_m2m;
@@ -67,13 +67,17 @@ typedef struct {
 
 static void queue_dma(uint16_t *dst, uint16_t *src, uint16_t count){
         //TODO: make sure DMA is not busy
+
+        if(hdma_m2m.State != HAL_DMA_STATE_READY) {
+             HAL_DMA_PollForTransfer(&hdma_m2m, HAL_DMA_FULL_TRANSFER, 0);
+        }
         HAL_DMA_Start(&hdma_m2m, src, dst, count);
 }
 
 //TODO: has to be a way to optimize this
 q31_t q31_low_pass(q31_t v, filter_state_t *filter){
         q31_t ret=0;
-        filter->taps[FIR_REVERSED?0:63] = v;
+        filter->taps[FIR_REVERSED?63:0] = v;
 
         ret += (filter->taps[0] * 462) >> 8;
         ret += (filter->taps[1] * 438) >> 8;
@@ -156,6 +160,8 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 	HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
 	q31_t q31_i_alpha = 0;
 	q31_t q31_i_beta = 0;
+	q31_t q31_i_alpha_lp = 0;
+	q31_t q31_i_beta_lp = 0;
 	q31_t q31_u_alpha = 0;
 	q31_t q31_u_beta = 0;
 	q31_t q31_i_d = 0;
@@ -173,14 +179,17 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 			&q31_i_beta);
 
         if(hfi_on){
-                q31_i_alpha = q31_low_pass(q31_i_alpha, &fundamental_alpha);
-                q31_i_beta = q31_low_pass(q31_i_beta, &fundamental_beta);
+                q31_i_alpha_lp = q31_low_pass(q31_i_alpha, &fundamental_alpha);
+                q31_i_beta_lp = q31_low_pass(q31_i_beta, &fundamental_beta);
+        }else{
+                q31_i_alpha_lp = q31_i_alpha;
+                q31_i_beta_lp = q31_i_beta;
         }
 
 	arm_sin_cos_q31(q31_teta, &sinevalue, &cosinevalue);
 
 	// Park transformation
-	arm_park_q31(q31_i_alpha, q31_i_beta, &q31_i_d, &q31_i_q, sinevalue,
+	arm_park_q31(q31_i_alpha_lp, q31_i_beta_lp, &q31_i_d, &q31_i_q, sinevalue,
 			cosinevalue);
 
 	q31_i_q_fil -= q31_i_q_fil >> 4;
