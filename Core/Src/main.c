@@ -1059,8 +1059,8 @@ static void MX_DMA_Init(void) {
         hdma_m2m.Init.Direction = DMA_MEMORY_TO_MEMORY;
         hdma_m2m.Init.PeriphInc = DMA_PINC_ENABLE;
         hdma_m2m.Init.MemInc = DMA_MINC_ENABLE;
-        hdma_m2m.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
-        hdma_m2m.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+        hdma_m2m.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+        hdma_m2m.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
         hdma_m2m.Init.Mode = DMA_NORMAL;
         hdma_m2m.Init.Priority = DMA_PRIORITY_LOW;
 /*        hdma_m2m.Init.FIFOMode = DMA_FIFOMODE_DISABLE; //FIFO mode disabled
