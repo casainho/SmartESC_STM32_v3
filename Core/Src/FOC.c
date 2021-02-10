@@ -54,7 +54,7 @@ void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta);
 
 
 static const q31_t hfi_sin_table[16] = {0,25079,46340,60547,65536,60547,46340,25079,
-                                        0,-25079-46340,-60547,-65536,-60547,-46340,-25079 } ; //sin(2*PI/16 *i) * 2^16
+                                        0,-25079,-46340,-60547,-65536,-60547,-46340,-25079 } ; //sin(2*PI/16 *i) * 2^16
 static const q31_t hfi_cos_table[16] = {65536,60547,46340,25079,0,-25079,-46340,-60547,-65536,
                                         -60547,-46340,-25079,0,25079,46340,60547}; //cos(2*PI/16 *i) * 2^16
 
@@ -152,6 +152,8 @@ q31_t q31_low_pass(q31_t v, filter_state_t *filter){
 
 static bool hfi_on=true;
 
+static volatile int32_t alpha_log[64];
+
 
 void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 		int16_t int16_i_q_target, MotorState_t *MS_FOC) {
@@ -177,7 +179,11 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 			&q31_i_beta);
 
         if(hfi_on){
+                static int log_idx=0;
                 q31_i_alpha_lp = q31_low_pass(q31_i_alpha, &fundamental_alpha);
+                alpha_log[log_idx++] = q31_i_alpha_lp;
+                if(log_idx>=64)
+                   log_idx=0;
                 q31_i_beta_lp = q31_low_pass(q31_i_beta, &fundamental_beta);
         }else{
                 q31_i_alpha_lp = q31_i_alpha;
@@ -208,7 +214,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
    	        MS_FOC->u_q=0;
 	        MS_FOC->u_d=300;
 	}else{
-   	        MS_FOC->u_q=0;  //TODO: for now make no voltage
+   	        MS_FOC->u_q=-75;  //TODO: for now make no voltage
 	        MS_FOC->u_d=0;
         }
 
@@ -221,14 +227,17 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
              static int hfi_index=0;
 
              //Heterodyne the current with injection signal to frequency shift by injection frequency
-             q31_t heteroA = (q31_i_alpha * hfi_sin_table[hfi_index]);
-             q31_t heteroB = (q31_i_beta * hfi_sin_table[hfi_index]);
+             q31_t heteroA = (q31_i_alpha * hfi_sin_table[hfi_index]) >> 12;
+             q31_t heteroB = (q31_i_beta * hfi_cos_table[hfi_index]) >> 12;
 
              q31_t loA = q31_low_pass(heteroA, &heterodyne_alpha);
              q31_t loB = q31_low_pass(heteroB, &heterodyne_beta);
 
              q31_t rotor_angle = atan2_LUT(loA,loB); //That's it
-
+             MS_FOC->atan_angle=rotor_angle;
+             MS_FOC->hall_angle=q31_teta;
+             MS_FOC->he_alpha = loA;
+             MS_FOC->he_beta = loB;     
              //Generate the injection
 #if 1
              q31_u_alpha += (hfi_sin_table[hfi_index] * HFI_VOLTAGE) >> 16;

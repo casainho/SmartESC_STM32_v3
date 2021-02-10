@@ -115,6 +115,10 @@ typedef struct {
 	q31_t u_q;
 	q31_t u_abs;
 	q31_t Battery_Current;
+        q31_t atan_angle;
+        q31_t hall_angle;
+        q31_t he_alpha;
+        q31_t he_beta;
 	uint8_t hall_angle_detect_flag;
 	uint8_t char_dyn_adc_state;
 	uint8_t assist_level;
