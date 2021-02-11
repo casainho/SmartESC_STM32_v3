@@ -119,6 +119,8 @@ typedef struct {
         q31_t hall_angle;
         q31_t he_alpha;
         q31_t he_beta;
+        q31_t ofst_alpha;
+        q31_t ofst_beta;
 	uint8_t hall_angle_detect_flag;
 	uint8_t char_dyn_adc_state;
 	uint8_t assist_level;

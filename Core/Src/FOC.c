@@ -64,6 +64,29 @@ typedef struct {
      int32_t taps[FIR_LENGTH];
 } filter_state_t;
 
+typedef struct {
+     int32_t values[64];
+     int32_t weights[64];
+     int32_t head;
+     int32_t total_weight;
+     int32_t total_sum;
+} weighted_filter_state_t;
+
+
+static int32_t weighted_filter_push(weighted_filter_state_t *state, int32_t v, int32_t weight){
+
+     state->total_sum -= state->values[state->head] * state->weights[state->head];
+     state->total_weight -= state->weights[state->head];
+     state->values[state->head] = v;
+     state->weights[state->head] = weight;
+     state->total_weight += weight;
+     state->total_sum += v * weight;
+     state->head = (state->head+1) % 64;
+     if(state->total_weight)
+         return state->total_sum / state->total_weight;
+     return 0;
+}
+
 static void queue_dma(uint32_t *dst, uint32_t *src, uint16_t count){
         //TODO: make sure DMA is not busy
 
@@ -227,17 +250,31 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
              static int hfi_index=0;
 
              //Heterodyne the current with injection signal to frequency shift by injection frequency
-             q31_t heteroA = (q31_i_alpha * hfi_sin_table[hfi_index]) >> 12;
-             q31_t heteroB = (q31_i_beta * hfi_cos_table[hfi_index]) >> 12;
+             q31_t heteroA = ((q31_i_alpha) * hfi_sin_table[hfi_index]) >> 8;
+             q31_t heteroB = ((q31_i_beta) * hfi_cos_table[hfi_index]) >> 8;
 
              q31_t loA = q31_low_pass(heteroA, &heterodyne_alpha);
              q31_t loB = q31_low_pass(heteroB, &heterodyne_beta);
 
-             q31_t rotor_angle = atan2_LUT(loA,loB); //That's it
+             static q31_t prev_loA=0;
+             static q31_t prev_loB=0;
+             q31_t deltaA = loA - MS_FOC->ofst_alpha;
+             q31_t deltaB = loB - MS_FOC->ofst_beta;
+
+             q31_t weight = deltaA * deltaA + deltaB * deltaB; //~16bit
+             weight = weight > 100 ? 1 : 0;
+
+             static weighted_filter_state_t filter_A={}, filter_B={};
+             deltaA = weighted_filter_push(&filter_A,deltaA,weight);
+             deltaB = weighted_filter_push(&filter_B,deltaB,weight);
+
+
+             q31_t rotor_angle = atan2_LUT(deltaA,deltaB); //That's it
+
              MS_FOC->atan_angle=rotor_angle;
              MS_FOC->hall_angle=q31_teta;
-             MS_FOC->he_alpha = loA;
-             MS_FOC->he_beta = loB;     
+             MS_FOC->he_alpha = deltaA;
+             MS_FOC->he_beta = deltaB;     
              //Generate the injection
 #if 1
              q31_u_alpha += (hfi_sin_table[hfi_index] * HFI_VOLTAGE) >> 16;

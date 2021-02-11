@@ -472,6 +472,10 @@ int main(void) {
                 autodetect();
         }
 
+        //TODO: need a way to autodetect these and store in EEPROM, motor specific!
+        MS.ofst_alpha = 500;
+        MS.ofst_beta = -327;
+
 #if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
 	printf_("Lishui FOC v0.9 \n ");
 #endif
