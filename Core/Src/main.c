@@ -1280,17 +1280,20 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		//extrapolate recent rotor position
 		ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
 		if (MS.hall_angle_detect_flag) {
-			if (ui16_tim2_recent < ui16_timertics && !ui8_overflow_flag) { //prevent angle running away at standstill
-				// float with division necessary!
-				q31_rotorposition_absolute = q31_rotorposition_hall
-						+ (q31_t) (i16_hall_order * i8_recent_rotor_direction
-								* ((10923 * ui16_tim2_recent) / ui16_timertics)
-								<< 16); //interpolate angle between two hallevents by scaling timer2 tics, 10923<<16 is 715827883 = 60�
+                        if(ui16_timertics == (1<<16)-1){
 
-			} else {
-				ui8_overflow_flag = 1;
+                        } else {
+			        if (ui16_tim2_recent < ui16_timertics && !ui8_overflow_flag) { //prevent angle running away at standstill
+				        // float with division necessary!
+				        q31_rotorposition_absolute = q31_rotorposition_hall
+					        	+ (q31_t) (i16_hall_order * i8_recent_rotor_direction
+				        				* ((10923 * ui16_tim2_recent) / ui16_timertics)
+				        				<< 16); //interpolate angle between two hallevents by scaling timer2 tics, 10923<<16 is 715827883 = 60�
 
-			}
+        			} else {
+	        			ui8_overflow_flag = 1;        
+	        		}
+                        }
 		} //end if hall angle detect
 
 		__enable_irq(); //EXIT CRITICAL SECTION!!!!!!!!!!!!!!
@@ -1551,6 +1554,9 @@ void get_standstill_position() {
 	printf_("standstill position %d, %d, %d\n", temp6,
 			(int16_t) (((temp6 >> 23) * 180) >> 8), ui8_hall_state);
 
+       //Sometimes HAL_GPIO_EXTI_Callback() will reset tim2, sometimes not, set it to very high value to prevent bad stuff
+       __HAL_TIM_SET_COUNTER(&htim2,(1<<16)-1);
+       ui16_timertics = (1<<16)-1;
 }
 
 int32_t speed_to_tics(uint8_t speed) {
